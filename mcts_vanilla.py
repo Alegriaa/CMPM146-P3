@@ -1,10 +1,28 @@
-
 from mcts_node import MCTSNode
 from random import choice
-from math import sqrt, log
+from math import sqrt, log, inf
 
 num_nodes = 1000
 explore_faction = 2.
+
+
+def uct_evaluation(node):
+    """
+        Args:
+        node:       A tree node from which the search is traversing.
+
+        Returns:    UCT of given Node
+
+    """
+    # (1 - bot's win rate) + 2 * sqrt( ln(n)/ (nj) )
+    # n is the number of times the parent has been visited
+    # nj is the number of times the child has been visited
+    calculation = 0
+    if node.visits > 0:
+        calculation = (1 - node.wins) + 2 * sqrt(log(node.parent.visits) / node.visits)
+    return calculation
+    
+
 
 def traverse_nodes(node, board, state, identity):
     """ Traverses the tree until the end criterion are met.
@@ -18,8 +36,26 @@ def traverse_nodes(node, board, state, identity):
     Returns:        A node from which the next stage of the search can proceed.
 
     """
-    pass
-    # Hint: return leaf_node
+    optimal_node = MCTSNode(parent=None, parent_action=None,
+                         action_list=board.legal_actions(state))
+    leaf_node = node
+    if leaf_node.untried_actions != None:
+        if leaf_node.child_nodes != None:
+            for value, child in leaf_node.child_nodes.items():
+                uct_eval = traverse_nodes(child, board, state, identity)
+      
+        if node.parent:
+            red = uct_evaluation(leaf_node)
+            blue = uct_evaluation(optimal_node)
+           
+            if blue < red:
+                optimal_node = node
+        print('returned op')
+        return optimal_node
+        
+    else:
+        print('returned non op')
+        return leaf_node
 
 
 def expand_leaf(node, board, state):
@@ -33,7 +69,16 @@ def expand_leaf(node, board, state):
     Returns:    The added child node.
 
     """
-    pass
+
+    next_move = node.untried_actions.pop(0)
+    # returns a new state constructed by applying action in state
+    state = board.next_state(state, next_move)
+    # add new MCTSNode to the three
+    new_leaf = MCTSNode(parent=node, parent_action=next_move,
+                        action_list=board.legal_actions(state))
+    node.child_nodes[next_move] = new_leaf
+
+    return new_leaf
     # Hint: return new_node
 
 
@@ -45,8 +90,14 @@ def rollout(board, state):
         state:  The state of the game.
 
     """
-    pass
-
+    boardstate = state
+    while(board.legal_actions!=[]):
+        print('running rollout')
+        if(board.legal_actions(boardstate)==[]):
+            print('passed')
+            break
+        else:
+            boardstate = board.next_state(boardstate,choice(board.legal_actions(boardstate)))
 
 def backpropagate(node, won):
     """ Navigates the tree from a leaf node to the root, updating the win and visit count of each node along the path.
@@ -56,7 +107,11 @@ def backpropagate(node, won):
         won:    An indicator of whether the bot won or lost the game.
 
     """
-    pass
+    while node != None:
+        if won:
+            node.wins += 1
+        node.visits += 1
+        node = node.parent
 
 
 def think(board, state):
@@ -70,9 +125,12 @@ def think(board, state):
 
     """
     identity_of_bot = board.current_player(state)
-    root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(state))
+    root_node = MCTSNode(parent=None, parent_action=None,
+                         action_list=board.legal_actions(state))
 
     for step in range(num_nodes):
+        print('test')
+        print(identity_of_bot)
         # Copy the game for sampling a playthrough
         sampled_game = state
 
@@ -81,6 +139,55 @@ def think(board, state):
 
         # Do MCTS - This is all you!
 
+        #Selection
+        while node.untried_actions==[] and node.child_nodes != {}:
+            #node.visits+=1
+            print("in selection")
+            node = traverse_nodes(node, board, sampled_game, identity_of_bot)
+            print("finished")
+            if node.parent_action!=None:
+                board.next_state(sampled_game, node.parent_action)
+        #Expansion
+        if(node.untried_actions != []):
+            print('in expand')
+            node = expand_leaf(node, board, sampled_game)
+            print('entering traverse')
+            node = traverse_nodes(node, board, sampled_game, identity_of_bot)
+            print('ending traverse')
+            board.next_state(sampled_game, node.parent_action)
+            print('next state')
+
+        #Simulate
+        rollout(board,sampled_game)
+        print('rollout')
+        #figure out who won based on rollout, use var won
+        score = board.points_values(sampled_game)
+        print('did this run')
+
+        if score == None:
+            winner = 0
+        elif score[1] == 1:
+            winner = 1
+        elif score[2] == 1:
+            winner = 2
+        
+        if identity_of_bot == winner:
+            won = True
+        else:
+            won = False
+
+        #Backpropogate
+        backpropagate(node,won)
+
+    
+    bestScore = 0
+
+    for child in root_node.child_nodes:
+        temp_node = root_node.child_nodes[child]
+        if child != None and ((temp_node.wins/temp_node.visit)>bestScore):
+            bestScore=(temp_node.wins/temp_node.visits)
+            bestAction = child
+
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
-    return None
+    return bestAction
