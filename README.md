@@ -1,3 +1,3 @@
 # CMPM146-P3
-Brian Pereira Alegria
-Miguelcloid Reniva
+# Brian Pereira Alegria
+# Miguelcloid Reniva
