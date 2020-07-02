@@ -1,7 +1,6 @@
-
 from mcts_node import MCTSNode
 from random import choice
-from math import sqrt, log
+from math import sqrt, log, inf
 
 num_nodes = 1000
 explore_faction = 2.
@@ -69,7 +68,8 @@ def expand_leaf(node, board, state):
     # returns a new state constructed by applying action in state
     state = board.next_state(state, next_move)
     # add new MCTSNode to the three
-    new_leaf = MCTSNode(parent=node, parent_action=next_move, action_list=board.legal_actions(state))
+    new_leaf = MCTSNode(parent=node, parent_action=next_move,
+                        action_list=board.legal_actions(state))
     node.child_nodes[next_move] = new_leaf
 
     return new_leaf
@@ -116,9 +116,12 @@ def think(board, state):
 
     """
     identity_of_bot = board.current_player(state)
-    root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(state))
+    root_node = MCTSNode(parent=None, parent_action=None,
+                         action_list=board.legal_actions(state))
 
     for step in range(num_nodes):
+        print('test')
+        print(identity_of_bot)
         # Copy the game for sampling a playthrough
         sampled_game = state
 
