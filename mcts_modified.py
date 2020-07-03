@@ -46,7 +46,7 @@ def uct_evaluation(node):
     # nj is the number of times the child has been visited
     calculation = 0
     if node.visits > 0:
-        calculation = (1 - node.wins) + 2 * sqrt(log(node.parent.visits) / node.visits)
+        calculation = (node.wins/node.visits) + 2 * sqrt(log(node.parent.visits) / node.visits)
     return calculation
 
 

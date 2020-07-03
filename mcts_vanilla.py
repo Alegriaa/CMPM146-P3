@@ -1,24 +1,11 @@
 from mcts_node import MCTSNode
 from random import choice
 from math import sqrt, log, inf
+import sys
+sys.setrecursionlimit(1500)
 
-num_nodes = 100
+num_nodes = 300
 explore_faction = 2.
-
-def traverse_leafs(node, optimal_node):
-    if node.untried_actions:
-        if optimal_node is None:
-            optimal_node = node
-        if node.parent is not None:
-            utc_node: Union[Union[float, int], Any] = uct_evaluation(node)
-            utc_optimal: Union[Union[float, int], Any] = uct_evaluation(optimal_node)
-            if utc_node > utc_optimal:
-                optimal_node = node
-    else:
-        if node.child_nodes:
-            for key, child in node.child_nodes.items():
-                optimal_node = traverse_leafs(child, optimal_node)
-    return optimal_node
 
 def traverse_nodes(node, board, state, identity):
     """ Traverses the tree until the end criterion are met.
@@ -29,12 +16,24 @@ def traverse_nodes(node, board, state, identity):
         identity:   The bot's identity, either 'red' or 'blue'.
     Returns:        A node from which the next stage of the search can proceed.
     """
+    
+    if not node.child_nodes:
+        node.visits+=1
+        return node
 
-
-    optimal_node = None
+    value = None
     leaf_node = None
-    leaf_node = traverse_leafs(node, optimal_node)
-    return leaf_node
+
+    for child in node.child_nodes:
+        child = node.child_nodes[child]
+        value_bound = uct_evaluation(child)
+        if value is None or value_bound < bound:
+            bound = value_bound
+            leaf_node = child
+
+    next_state = board.next_state(state, leaf_node.parent_action)
+
+    return traverse_nodes(leaf_node, board, next_state, board.current_player(next_state))
 
     # Hint: return leaf_node
 
@@ -49,7 +48,7 @@ def uct_evaluation(node):
     # nj is the number of times the child has been visited
     calculation = 0
     if node.visits > 0:
-        calculation = (1-node.wins/node.visits) + 2 * sqrt(log(node.parent.visits) / node.visits)
+        calculation = (node.wins/node.visits) + 2 * sqrt(log(node.parent.visits) / node.visits)
     return calculation 
 
 
@@ -86,6 +85,7 @@ def rollout(board, state):
         boardstate = board.next_state(boardstate,choice(board.legal_actions(boardstate)))
 
     score = board.points_values(boardstate)
+    state = boardstate
 
     if score == None:
         winner = 0
@@ -134,8 +134,6 @@ def think(board, state):
 
         #Selection
         new_leaf_node = traverse_nodes(node, board, sampled_game, identity_of_bot)
-        if new_leaf_node is None:
-            break
         # Expansion
         expansion_leaf = expand_leaf(new_leaf_node, board, sampled_game)
 
@@ -144,11 +142,16 @@ def think(board, state):
         #figure out who won based on rollout, use var won
 
         #Backpropogate
-        backpropagate(node,identity_of_bot == winner)
+        backpropagate(expansion_leaf,identity_of_bot == winner)
 
     
-    best_action = None
-    for value, child in root_node.child_nodes.items():
-        if best_action is None or child.visits > best_action.visits:
-            best_action = child
-    return best_action.parent_action
+    highscore=-1
+    bestAction = None
+    for child in root_node.child_nodes:
+        child = root_node.child_nodes[child]
+        if child.wins/child.visits > highscore:
+            highscore = child.wins/child.visits
+            bestAction = child.parent_action
+
+    print("Vanilla bot picking %s with expected score %f" % (str(bestAction), highscore))
+    return bestAction           
