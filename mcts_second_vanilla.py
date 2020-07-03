@@ -2,20 +2,26 @@ from typing import Any, Union
 
 from mcts_node import MCTSNode
 from random import choice
-from math import sqrt, log, inf
+from math import sqrt, log
 
 num_nodes = 10
 
 
-# def evaluate_node(node):
-#     """
-#     This function evaluates a node following the formula seen in class
-#     """
-#     evaluation = 0
-#     if (node.visits != 0):
-#         evaluation = (node.wins / node.visits) + 2 * sqrt(log(node.parent.visits) / node.visits)
-#     return evaluation
 
+def traverse_leafs(node, optimal_node):
+    if node.untried_actions:
+        if optimal_node is None:
+            optimal_node = node
+        if node.parent is not None:
+            utc_node: Union[Union[float, int], Any] = uct_evaluation(node)
+            utc_optimal: Union[Union[float, int], Any] = uct_evaluation(optimal_node)
+            if utc_node > utc_optimal:
+                optimal_node = node
+    else:
+        if node.child_nodes:
+            for key, child in node.child_nodes.items():
+                optimal_node = traverse_leafs(child, optimal_node)
+    return optimal_node
 
 
 def uct_evaluation(node):
@@ -33,21 +39,6 @@ def uct_evaluation(node):
     if node.visits > 0:
         calculation = (1 - node.wins) + 2 * sqrt(log(node.parent.visits) / node.visits)
     return calculation
-
-def traverse_leafs(node, optimal_node):
-    if node.untried_actions:
-        if optimal_node is None:
-            optimal_node = node
-        if node.parent is not None:
-            utc_node: Union[Union[float, int], Any] = uct_evaluation(node)
-            utc_optimal: Union[Union[float, int], Any] = uct_evaluation(optimal_node)
-            if utc_node > utc_optimal:
-                optimal_node = node
-    else:
-        if node.child_nodes:
-            for key, child in node.child_nodes.items():
-                optimal_node = traverse_leafs(child, optimal_node)
-    return optimal_node
 
 
 def traverse_nodes(node):
@@ -67,38 +58,7 @@ def traverse_nodes(node):
     # Hint: return leaf_node
 
 
-# def traverse_nodes(node, board, state, identity):
-#     """ Traverses the tree until the end criterion are met.
 #
-#     Args:
-#         node:       A tree node from which the search is traversing.
-#         board:      The game setup.
-#         state:      The state of the game.
-#         identity:   The bot's identity, either 'red' or 'blue'.
-#
-#     Returns:        A node from which the next stage of the search can proceed.
-#
-#     """
-#     optimal_node = MCTSNode(parent=None, parent_action=None,
-#                          action_list=board.legal_actions(state))
-#     leaf_node = node
-#     if leaf_node.untried_actions != None:
-#         if leaf_node.child_nodes != None:
-#             for value, child in leaf_node.child_nodes.items():
-#                 uct_eval = traverse_nodes(child, board, state, identity)
-#
-#         if node.parent:
-#             red = uct_evaluation(leaf_node)
-#             blue = uct_evaluation(optimal_node)
-#
-#             if blue < red:
-#                 optimal_node = node
-#         print('returned op')
-#         return optimal_node
-#
-#     else:
-#         print('returned non op')
-#         return leaf_node
 
 
 def expand_leaf(node, board, state):

@@ -1,11 +1,47 @@
+from typing import Any, Union
+
 from mcts_node import MCTSNode
 from random import choice
-from math import sqrt, log, inf
+from math import sqrt, log
 
-num_nodes = 1000
-explore_faction = 2.
+num_nodes = 500
 
-def traverse_nodes(node, board, state, identity):
+
+
+def traverse_leafs(node, optimal_node):
+    if node.untried_actions:
+        if optimal_node is None:
+            optimal_node = node
+        if node.parent is not None:
+            utc_node: Union[Union[float, int], Any] = uct_evaluation(node)
+            utc_optimal: Union[Union[float, int], Any] = uct_evaluation(optimal_node)
+            if utc_node > utc_optimal:
+                optimal_node = node
+    else:
+        if node.child_nodes:
+            for key, child in node.child_nodes.items():
+                optimal_node = traverse_leafs(child, optimal_node)
+    return optimal_node
+
+
+def uct_evaluation(node):
+    """
+        Args:
+        node:       A tree node from which the search is traversing.
+
+        Returns:    UCT of given Node
+
+    """
+    # (1 - bot's win rate) + 2 * sqrt( ln(n)/ (nj) )
+    # n is the number of times the parent has been visited
+    # nj is the number of times the child has been visited
+    calculation = 0
+    if node.visits > 0:
+        calculation = (1 - node.wins) + 2 * sqrt(log(node.parent.visits) / node.visits)
+    return calculation
+
+
+def traverse_nodes(node):
     """ Traverses the tree until the end criterion are met.
     Args:
         node:       A tree node from which the search is traversing.
@@ -15,47 +51,28 @@ def traverse_nodes(node, board, state, identity):
     Returns:        A node from which the next stage of the search can proceed.
     """
 
-
-    leaf_node = node
-    bestScore = 0
-    if leaf_node.untried_actions != None:
-        if leaf_node.child_nodes != None:
-            for child in leaf_node.child_nodes:
-
-                score = uct_evaluation(node.child_nodes[child])
-
-                if(score>bestScore):
-                    bestScore = score
-                    leaf_node = node.child_nodes[child]
-
-        return leaf_node
-
+    optimal_node = None
+    leaf_node = None
+    leaf_node = traverse_leafs(node, optimal_node)
+    return leaf_node
     # Hint: return leaf_node
 
-def uct_evaluation(node):
-    """
-        Args:
-        node:       A tree node from which the search is traversing.
-        Returns:    UCT of given Node
-    """
-    # (1 - bot's win rate) + 2 * sqrt( ln(n)/ (nj) )
-    # n is the number of times the parent has been visited
-    # nj is the number of times the child has been visited
-    calculation = 0
-    if node.visits > 0:
-        calculation = (1 - (node.wins/node.visits)) + 2 * sqrt(log(node.parent.visits) / node.visits)
-    return calculation 
+
+#
 
 
 def expand_leaf(node, board, state):
     """ Adds a new leaf to the tree by creating a new child node for the given node.
+
     Args:
         node:   The node for which a child will be added.
         board:  The game setup.
         state:  The state of the game.
+
     Returns:    The added child node.
+
     """
-    #Global Var for placeholder Node
+
     next_move = node.untried_actions.pop(0)
     # returns a new state constructed by applying action in state
     state = board.next_state(state, next_move)
@@ -70,35 +87,50 @@ def expand_leaf(node, board, state):
 
 def rollout(board, state):
     """ Given the state of the game, the rollout plays out the remainder randomly.
+
     Args:
         board:  The game setup.
         state:  The state of the game.
-    """
-    #While current board of legal actions is not empty, keep iterating
-    boardstate = state
-    while(board.legal_actions(boardstate)!=[]):
-        boardstate = board.next_state(boardstate,choice(board.legal_actions(boardstate)))
+
+   """
+
+    moves = board.legal_actions(state)
+    rollout_state = state
+    sim_score = {}
+    while not board.is_ended(rollout_state):
+        rollout_state = board.next_state(rollout_state, choice(moves))
+        moves = board.legal_actions(rollout_state)
+        sim_score = board.points_values(rollout_state)
+    return sim_score
 
 
 def backpropagate(node, won):
     """ Navigates the tree from a leaf node to the root, updating the win and visit count of each node along the path.
+
     Args:
         node:   A leaf node.
         won:    An indicator of whether the bot won or lost the game.
+
     """
-    while node != None:
-        if won:
-            node.wins+=1
-        node.visits+=1
+    while (node.parent != None):
+        node.visits += 1
+        if (won == True):
+            node.wins += 1
         node = node.parent
+    node.visits += 1
+    if (won == True):
+        node.wins += 1
 
 
 def think(board, state):
     """ Performs MCTS by sampling games and calling the appropriate functions to construct the game tree.
+
     Args:
         board:  The game setup.
         state:  The state of the game.
+
     Returns:    The action to be taken.
+
     """
     identity_of_bot = board.current_player(state)
     root_node = MCTSNode(parent=None, parent_action=None,
@@ -110,50 +142,29 @@ def think(board, state):
 
         # Start at root
         node = root_node
-
         # Do MCTS - This is all you!
 
-        #Selection
-        while node.untried_actions==[] and node.child_nodes != {}:
-            node.visits+=1
-            node = traverse_nodes(node, board, sampled_game, identity_of_bot)
-            if node.parent_action!=None:
-                board.next_state(sampled_game, node.parent_action)
-        #Expansion
-        if(node.untried_actions != []):
-            node = expand_leaf(node, board, sampled_game)
-            node = traverse_nodes(node, board, sampled_game, identity_of_bot)
-            board.next_state(sampled_game, node.parent_action)
+        # Selection
+        new_leaf_node = traverse_nodes(node)
+        if new_leaf_node is None:
+            break
+        # Expansion
+        expansion_leaf = expand_leaf(new_leaf_node, board, sampled_game)
+        # Simulate
+        sim_score = rollout(board, sampled_game)
 
-        #Simulate
-        rollout(board,sampled_game)
-        #figure out who won based on rollout, use var won
-        score = board.points_values(sampled_game)
-
-        if score == None:
-            winner = 0
-        elif score[1] == 1:
-            winner = 1
-        elif score[2] == 1:
-            winner = 2
-        
-        if identity_of_bot == winner:
-            won = True
-        else:
-            won = False
-
-        #Backpropogate
-        backpropagate(node,won)
-
-    
-    bestScore = -1
-
-    for child in root_node.child_nodes:
-        temp_node = root_node.child_nodes[child]
-        if child != None and ((temp_node.wins/temp_node.visits)>bestScore):
-            bestScore=(temp_node.wins/temp_node.visits)
-            bestAction = child
+        game_won = False
+        if (identity_of_bot == 1 and sim_score is {1: 1, 2: -1}) or (
+                identity_of_bot == 2 and sim_score is {1: -1, 2: 1}):
+            game_won = True
+        # Backpropogate
+        backpropagate(expansion_leaf, game_won)
+        # MCTS completed!
 
     # Return an action, typically the most frequently used action (from the root) or the action with the best
-    # estimated win rate.
-    return bestAction
+    # estimated win rate
+    best_action = None
+    for value, child in root_node.child_nodes.items():
+        if best_action is None or child.visits > best_action.visits:
+            best_action = child
+    return best_action.parent_action
