@@ -24,6 +24,13 @@ def traverse_leafs(node, optimal_node):
 
 
 def uct_evaluation(node):
+    """
+        Args:
+        node:       A tree node from which the search is traversing.
+
+        Returns:    UCT of given Node
+
+    """
     # (1 - bot's win rate) + 2 * sqrt( ln(n)/ (nj) )
     # n is the number of times the parent has been visited
     # nj is the number of times the child has been visited
