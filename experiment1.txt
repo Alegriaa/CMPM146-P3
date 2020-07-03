@@ -1,0 +1,3 @@
+In our findings, we noticed that whatever node was highest, it would have a 100% win-rate. Due to time-constraits, we could only test nodes below 100.
+From these findings, we can see that we were winning consisntently. We need more time to test for higher nodes and I believe we have a false-positive as it should
+have some type of loss or draw. Reguardless, our results have shown otherwise.

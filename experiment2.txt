@@ -1,0 +1,6 @@
+From our experimentation, we tried changing the Upper Bounds equation to exploit winning strategies. To do this we changed the node wins to node.wins / node.visits.
+We did this as we already know the possible outcomes of node.wins through node.visits thus making of ratio for known possiblities. We get an unexpected output from this
+and get a draw for every game. We also tried changing the exploration value from 2 to aribitrary number than 2 and still get consistent draws. We also tried different 
+values and still get consistent draws. Perhaphs, it was a faulty code or the equation.Unfournately, we do not have time to test or debug the code further. 
+We would definetely changed parts of rollback to integrate the node.wins/node.visits by iterating on successful moves. Just get the state
+of a possible move and then get the board's point value and continue iterating if it's higher than the previous board score or choose an entirely new move.
