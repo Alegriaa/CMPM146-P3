@@ -1,11 +1,9 @@
 from typing import Any, Union
-
 from mcts_node import MCTSNode
 from random import choice
 from math import sqrt, log
 
-num_nodes = 10
-
+num_nodes = 100
 
 
 def traverse_leafs(node, optimal_node):
@@ -14,7 +12,8 @@ def traverse_leafs(node, optimal_node):
             optimal_node = node
         if node.parent is not None:
             utc_node: Union[Union[float, int], Any] = uct_evaluation(node)
-            utc_optimal: Union[Union[float, int], Any] = uct_evaluation(optimal_node)
+            utc_optimal: Union[Union[float, int],
+                               Any] = uct_evaluation(optimal_node)
             if utc_node > utc_optimal:
                 optimal_node = node
     else:
@@ -25,19 +24,13 @@ def traverse_leafs(node, optimal_node):
 
 
 def uct_evaluation(node):
-    """
-        Args:
-        node:       A tree node from which the search is traversing.
-
-        Returns:    UCT of given Node
-
-    """
     # (1 - bot's win rate) + 2 * sqrt( ln(n)/ (nj) )
     # n is the number of times the parent has been visited
     # nj is the number of times the child has been visited
     calculation = 0
     if node.visits > 0:
-        calculation = (1 - node.wins) + 2 * sqrt(log(node.parent.visits) / node.visits)
+        calculation = (1 - node.wins) + 2 * \
+            sqrt(log(node.parent.visits) / node.visits)
     return calculation
 
 
@@ -114,11 +107,11 @@ def backpropagate(node, won):
     """
     while (node.parent != None):
         node.visits += 1
-        if (won == True):
+        if won:
             node.wins += 1
         node = node.parent
     node.visits += 1
-    if (won == True):
+    if won:
         node.wins += 1
 
 
@@ -153,10 +146,13 @@ def think(board, state):
         # Simulate
         sim_score = rollout(board, sampled_game)
 
-        game_won = False
-        if (identity_of_bot == 1 and sim_score is {1: 1, 2: -1}) or (
-                identity_of_bot == 2 and sim_score is {1: -1, 2: 1}):
-            game_won = True
+        opp_won = {1: 1, 2: -1}
+        we_won = {1: -1, 2: 1}
+
+        game_won = -1
+        if (identity_of_bot == 1 and sim_score is opp_won) or (
+                identity_of_bot == 2 and sim_score is we_won):
+            game_won = 1
         # Backpropogate
         backpropagate(expansion_leaf, game_won)
         # MCTS completed!
@@ -168,4 +164,3 @@ def think(board, state):
         if best_action is None or child.visits > best_action.visits:
             best_action = child
     return best_action.parent_action
-           
